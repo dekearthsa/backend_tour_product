@@ -9,6 +9,7 @@ type Products struct {
 	Include      []string
 	Exclusive    []string
 	Content      []ContentDate
+	ImagePath    []string
 }
 
 type ContentDate struct {

@@ -115,6 +115,7 @@ func ControllerInsertProduct(c *gin.Context) {
 		Include:      include,
 		Exclusive:    exclusive,
 		Content:      setContent,
+		ImagePath:    arrayImgPath,
 	}
 
 	// log.Println(payload)
