@@ -14,45 +14,34 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ControllerInsertProduct(c *gin.Context) {
+func ControllerUpdateProduct(c *gin.Context) {
 	const PROJECTID = "confident-topic-404213"
-	const KIND = "product"
+	const KIND = "content"
 	const BUCKET = "padtravel"
 
 	var timing = time.Now().UnixNano()
-	var arrayImgPath []string
+	var arrayImagePath []string
 	var setPrice []model.PricePerPerson
 	var setContent []model.ContentDate
-
 	ctx := context.Background()
+	// var setTitle string
+	// var setContent string
 	form, err := c.MultipartForm()
 	if err != nil {
-		log.Println(err)
+		log.Println("err MultipartForm => ", err)
 	}
-	files := form.File["images"]
 
+	files := form.File["images"]
 	region := form.Value["region"]
 	productName := form.Value["productName"]
 	objective := form.Value["objective"]
 	introduction := form.Value["introduction"]
 	include := form.Value["include"]
 	exclusive := form.Value["exclusive"]
-
 	persons := form.Value["person"]
 	prices := form.Value["price"]
-
 	titles := form.Value["title"]
 	contents := form.Value["content"]
-	// log.Println(contents)
-
-	clientDatastore, err := datastore.NewClient(ctx, PROJECTID)
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "can't find projectID."})
-	}
-
-	// var setKey = strings.Join(titles[0] , "")
-	key := datastore.NameKey(KIND, productName[0], nil)
 
 	for _, file := range files {
 		size := file.Size
@@ -60,34 +49,29 @@ func ControllerInsertProduct(c *gin.Context) {
 			log.Println("error file to big.")
 			c.JSON(http.StatusRequestHeaderFieldsTooLarge, gin.H{"Status": "file must less than 5MB."})
 		}
-
 		src, err := file.Open()
 		if err != nil {
-			log.Println("err can't open file", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"Status": "file can't open"})
+			log.Println("err open file => ", err)
 		}
 		defer src.Close()
-
-		imagePath := productName[0] + "_" + file.Filename + "_" + strconv.Itoa(int(timing))
-		// log.Println("imagePath => ", imagePath)
-		arrayImgPath = append(arrayImgPath, imagePath)
+		imagePath := productName[0] + "_" + file.Filename + strconv.Itoa(int(timing))
+		arrayImagePath = append(arrayImagePath, imagePath)
 		clientStorage, err := storage.NewClient(ctx)
 		if err != nil {
-			log.Println("err storage.NewClient(ctx) => ", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"Status": "internal error."})
+			log.Print("err in create client cloud storage => ", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "err in create client cloud storage"})
 		}
-
 		bucket := clientStorage.Bucket(BUCKET)
 		wc := bucket.Object(imagePath).NewWriter(ctx)
 		_, err = io.Copy(wc, src)
 		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusServiceUnavailable, gin.H{"Status": "can't writer object"})
+			log.Println("err when write in cloud storage => ", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "err when write in cloud storage"})
 		}
 		err = wc.Close()
 		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusServiceUnavailable, gin.H{"Status": "can't wc.Close"})
+			log.Println("err when close cloud storage => ", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "err when close cloud storage"})
 		}
 	}
 
@@ -120,14 +104,32 @@ func ControllerInsertProduct(c *gin.Context) {
 		Include:      include,
 		Exclusive:    exclusive,
 		Content:      setContent,
-		ImagePath:    arrayImgPath,
+		ImagePath:    arrayImagePath,
 	}
 
-	// log.Println(payload)
+	// log.Print("payload => ", payload)
 
-	if _, err := clientDatastore.Put(ctx, key, &payload); err != nil {
+	client, err := datastore.NewClient(ctx, PROJECTID)
+	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"Status": "can't insert data"})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "cannot connet datastore clinet"})
+	}
+
+	keyEntity := datastore.NameKey(KIND, productName[0], nil)
+	tx, err := client.NewTransaction(ctx)
+	if err != nil {
+		log.Println("client.NewTransaction => ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "NewTransaction error."})
+	}
+
+	if _, err := tx.Put(keyEntity, &payload); err != nil {
+		log.Println("tx.Put => ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "put serror."})
+	}
+
+	if _, err := tx.Commit(); err != nil {
+		log.Println("tx.Commit => ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Commit error."})
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})

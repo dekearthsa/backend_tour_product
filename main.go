@@ -21,6 +21,8 @@ func main() {
 	router.GET("/api/debug", controller.ControllerDebug)
 	router.POST("/api/sendfile", controller.ControllerInsertProduct)
 	router.GET("/api/readfile", controller.ControllerReadProduct)
+	router.POST("/api/update/product", controller.ControllerUpdateProduct)
+	router.POST("/api/delete/product", controller.ControllerDeleteProduct)
 
 	err := router.Run(port)
 	if err != nil {
