@@ -15,7 +15,7 @@ type modelKey struct {
 
 func ControllerDeleteProduct(c *gin.Context) {
 	const PROJECTID = "confident-topic-404213"
-	const KIND = "content"
+	const KIND = "product"
 
 	ctx := context.Background()
 	var req modelKey
